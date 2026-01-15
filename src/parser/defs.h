@@ -67,6 +67,13 @@ typedef enum {
 } operator_type_t;
 
 typedef enum {
+	ALTER_OPERATION_ADD_COLUMN,
+	ALTER_OPERATION_DROP_COLUMN, 
+	ALTER_OPERATION_MODIFY_COLUMN,
+	ALTER_OPERATION_RENAME_TABLE
+} alter_operation_type_t;
+
+typedef enum {
 	TERM_NONE = 0,
 	TERM_COLUMN_REF,
 	TERM_INT,
@@ -148,6 +155,18 @@ typedef struct table_join_info_t {
 	char *table, *join_table, *alias;
 	expr_node_t *cond;
 } table_join_info_t;
+
+typedef struct rename_info_t {
+	char *old_name;
+	char *new_name;
+} rename_info_t;
+
+typedef struct alter_info_t {
+	char *table_name;
+	alter_operation_type_t operation;
+	field_item_t *field_info;    // 用于ADD和MODIFY操作
+	char *column_name;           // 用于DROP操作
+} alter_info_t;
 
 #ifdef __cplusplus
 };

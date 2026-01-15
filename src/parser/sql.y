@@ -40,7 +40,8 @@ void yyerror(const char *s);
 %token LEFT RIGHT FULL ASC DESC ORDER BY IN ON AS
 %token DISTINCT GROUP USING INDEX TABLE DATABASE
 %token DEFAULT UNIQUE PRIMARY FOREIGN REFERENCES CHECK KEY OUTPUT
-%token USE CREATE DROP SELECT INSERT UPDATE DELETE SHOW SET EXIT
+%token ALTER RENAME TO ADD COLUMN MODIFY DROP
+%token USE CREATE DROP SELECT INSERT UPDATE DELETE SHOW SET EXIT ALTER RENAME
 
 %token IDENTIFIER
 %token DATE_LITERAL
@@ -55,7 +56,8 @@ void yyerror(const char *s);
 %type <val_i> field_type field_width field_flag field_flags
 %type <val_s> table_name database_name
 %type <val_s> create_database_stmt use_database_stmt drop_database_stmt show_database_stmt 
-%type <val_s> drop_table_stmt show_table_stmt
+%type <val_s> drop_table_stmt show_table_stmt rename_table_stmt
+%type <val_s> alter_table_stmt
 
 %type <field_items> table_field table_fields
 %type <table_def> create_table_stmt
@@ -68,6 +70,7 @@ void yyerror(const char *s);
 %type <delete_info> delete_stmt
 %type <select_info> select_stmt
 %type <expr> expr factor term condition cond_term where_clause literal literal_list_expr
+%type <val_i> alter_table_operation
 %type <expr> aggregate_expr aggregate_term select_expr default_expr
 %type <val_i> logical_op compare_op aggregate_op
 %type <list> select_expr_list select_expr_list_s table_refs
@@ -88,6 +91,8 @@ sql_stmt   :  create_table_stmt ';'    { execute_create_table($1); }
 		   |  drop_database_stmt ';'   { execute_drop_database($1); }
 		   |  show_table_stmt ';'      { execute_show_table($1); }
 		   |  drop_table_stmt ';'      { execute_drop_table($1); }
+		   |  rename_table_stmt ';'    { execute_rename_table($1); }
+		   |  alter_table_stmt ';'     { execute_alter_table($1); }
 		   |  insert_stmt ';'          { execute_insert($1); }
 		   |  update_stmt ';'          { execute_update($1); }
 		   |  delete_stmt ';'          { execute_delete($1); }
@@ -112,6 +117,16 @@ drop_database_stmt   : DROP DATABASE database_name     { $$ = $3; };
 show_database_stmt   : SHOW DATABASE database_name     { $$ = $3; };
 drop_table_stmt      : DROP TABLE table_name           { $$ = $3; };
 show_table_stmt      : SHOW TABLE table_name           { $$ = $3; };
+rename_table_stmt    : RENAME TABLE table_name TO table_name { 
+                      $$ = (rename_info_t*)malloc(sizeof(rename_info_t));
+                      $$->old_name = $3;
+                      $$->new_name = $5;
+                   };
+alter_table_stmt     : ALTER TABLE table_name alter_table_operation { 
+                      alter_info_t *info = (alter_info_t*)$4;
+                      info->table_name = $3;
+                      $$ = (char*)info;
+                   };
 insert_stmt          : INSERT INTO insert_columns VALUES insert_values {
 					 	$$ = $3;
 						$$->values = $5;
@@ -268,6 +283,26 @@ table_extra_option : PRIMARY KEY '(' IDENTIFIER ')' {
 					$$->column_ref->column = $4;
 					$$->type = TABLE_CONSTRAINT_PRIMARY_KEY;
 				   }
+
+alter_table_operation : ADD COLUMN table_field {
+                       alter_info_t *info = (alter_info_t*)malloc(sizeof(alter_info_t));
+                       info->operation = ALTER_OPERATION_ADD_COLUMN;
+                       info->field_info = $3;
+                       $$ = (int)info;
+                   }
+                   | DROP COLUMN IDENTIFIER {
+                       alter_info_t *info = (alter_info_t*)malloc(sizeof(alter_info_t));
+                       info->operation = ALTER_OPERATION_DROP_COLUMN;
+                       info->column_name = $3;
+                       $$ = (int)info;
+                   }
+                   | MODIFY COLUMN table_field {
+                       alter_info_t *info = (alter_info_t*)malloc(sizeof(alter_info_t));
+                       info->operation = ALTER_OPERATION_MODIFY_COLUMN;
+                       info->field_info = $3;
+                       $$ = (int)info;
+                   }
+                   ;
 				   | FOREIGN KEY '(' IDENTIFIER ')' REFERENCES IDENTIFIER '(' IDENTIFIER ')' {
 				   	$$ = (table_constraint_t*)calloc(1, sizeof(table_constraint_t));
 					$$->column_ref = (column_ref_t*)malloc(sizeof(column_ref_t));

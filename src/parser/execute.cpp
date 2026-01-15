@@ -197,4 +197,50 @@ void execute_quit()
 	printf("[exit] good bye!\n");
 }
 
+void execute_rename_table(const rename_info_t *rename_info)
+{
+	dbms::get_instance()->rename_table(rename_info->old_name, rename_info->new_name);
+	free((char*)rename_info->old_name);
+	free((char*)rename_info->new_name);
+	free((void*)rename_info);
+}
+
+void execute_alter_table(const alter_info_t *alter_info)
+{
+	switch(alter_info->operation) {
+	case ALTER_OPERATION_ADD_COLUMN:
+		dbms::get_instance()->alter_table_add_column(
+			alter_info->table_name, 
+			alter_info->field_info
+		);
+		break;
+	case ALTER_OPERATION_DROP_COLUMN:
+		dbms::get_instance()->alter_table_drop_column(
+			alter_info->table_name,
+			alter_info->column_name
+		);
+		break;
+	case ALTER_OPERATION_MODIFY_COLUMN:
+		dbms::get_instance()->alter_table_modify_column(
+			alter_info->table_name,
+			alter_info->field_info
+		);
+		break;
+	default:
+		fprintf(stderr, "[Error] Unknown ALTER TABLE operation\n");
+		break;
+	}
+	
+	free((char*)alter_info->table_name);
+	if(alter_info->field_info) {
+		free(alter_info->field_info->name);
+		expression::free_exprnode(alter_info->field_info->default_value);
+		free((void*)alter_info->field_info);
+	}
+	if(alter_info->column_name) {
+		free((char*)alter_info->column_name);
+	}
+	free((void*)alter_info);
+}
+
 

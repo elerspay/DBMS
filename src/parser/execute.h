@@ -22,6 +22,8 @@ void execute_create_index(const char *table_name, const char *col_name);
 void execute_drop_index(const char *table_name, const char *col_name);
 void execute_switch_output(const char *output_filename);
 void execute_quit();
+void execute_rename_table(const rename_info_t *rename_info);
+void execute_alter_table(const alter_info_t *alter_info);
 
 #ifdef __cplusplus
 }
