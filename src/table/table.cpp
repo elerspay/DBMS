@@ -255,8 +255,100 @@ bool table_manager::alter_table_drop_column(const char *column_name)
 {
 	if(!is_open) return false;
 	
-	// TODO: 实现删除列逻辑
-	std::printf("[Info] ALTER TABLE DROP COLUMN: dropping column `%s`\n", column_name);
+	// 查找要删除的列
+	int col_index = -1;
+	for(int i = 0; i < header.col_num; ++i) {
+		if(std::strcmp(header.col_name[i], column_name) == 0) {
+			col_index = i;
+			break;
+		}
+	}
+	
+	if(col_index < 0) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: column `%s` not found\n", column_name);
+		return false;
+	}
+	
+	// 检查是否为系统列
+	if(std::strcmp(column_name, "__rowid__") == 0) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: cannot drop system column `%s`\n", column_name);
+		return false;
+	}
+	
+	// 检查是否有索引
+	if(has_index(col_index)) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: column `%s` has index, drop index first\n", column_name);
+		return false;
+	}
+	
+	// 检查是否为主键
+	if((header.flag_primary & (1 << col_index))) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: column `%s` is primary key\n", column_name);
+		return false;
+	}
+	
+	// 检查是否为外键
+	for(int i = 0; i < header.foreign_key_num; ++i) {
+		if(header.foreign_key[i] == col_index) {
+			std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: column `%s` is foreign key\n", column_name);
+			return false;
+		}
+	}
+	
+	// 保存旧表头用于回滚
+	table_header_t old_header = header;
+	
+	// 从表头中移除列
+	for(int i = col_index; i < header.col_num - 1; ++i) {
+		std::strcpy(header.col_name[i], header.col_name[i + 1]);
+		header.col_type[i] = header.col_type[i + 1];
+		header.col_length[i] = header.col_length[i + 1];
+		header.col_offset[i] = header.col_offset[i + 1];
+		
+		// 更新标志位
+		if(header.flag_notnull & (1 << (i + 1))) header.flag_notnull |= (1 << i);
+		else header.flag_notnull &= ~(1 << i);
+		
+		if(header.flag_primary & (1 << (i + 1))) header.flag_primary |= (1 << i);
+		else header.flag_primary &= ~(1 << i);
+		
+		// 注意：这里没有使用 flag_foreign，因为表头中没有这个字段
+		if(header.flag_indexed & (1 << (i + 1))) header.flag_indexed |= (1 << i);
+		else header.flag_indexed &= ~(1 << i);
+		
+		if(header.flag_unique & (1 << (i + 1))) header.flag_unique |= (1 << i);
+		else header.flag_unique &= ~(1 << i);
+		
+		if(header.flag_default & (1 << (i + 1))) header.flag_default |= (1 << i);
+		else header.flag_default &= ~(1 << i);
+	}
+	
+	header.col_num--;
+	
+	// 重新计算列偏移量
+	header.col_offset[0] = 8; // rid + notnull mark
+	for(int i = 1; i < header.col_num; ++i) {
+		header.col_offset[i] = header.col_offset[i-1] + header.col_length[i-1];
+	}
+	
+	// 重新分配临时记录缓冲区
+	allocate_temp_record();
+	
+	// 保存修改后的表头
+	std::string thead = tname + ".thead";
+	FILE *f = std::fopen(thead.c_str(), "wb");
+	if(!f) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: failed to save table header\n");
+		// 回滚表头修改
+		header = old_header;
+		allocate_temp_record();
+		return false;
+	}
+	
+	std::fwrite(&header, sizeof(header), 1, f);
+	std::fclose(f);
+	
+	std::printf("[Info] ALTER TABLE DROP COLUMN: column `%s` dropped successfully\n", column_name);
 	return true;
 }
 

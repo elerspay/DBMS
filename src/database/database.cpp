@@ -227,8 +227,9 @@ void database::alter_table_drop_column(const char *table_name, const char *colum
 		return;
 	}
 	
-	std::fprintf(stderr, "[Info] ALTER TABLE DROP COLUMN: dropping column `%s` from table `%s`\n", 
-				column_name, table_name);
+	if(!table->alter_table_drop_column(column_name)) {
+		std::fprintf(stderr, "[Error] ALTER TABLE DROP COLUMN: failed to drop column `%s`\n", column_name);
+	}
 }
 
 void database::alter_table_modify_column(const char *table_name, const field_item_t *field)

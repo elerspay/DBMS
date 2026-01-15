@@ -23,7 +23,7 @@ char* strndup(const char* s, size_t n) {
 #endif
 %}
 
-ID_TEMPLATE      [a-zA-Z][a-zA-Z0-9_]*
+ID_TEMPLATE      _?[a-zA-Z][a-zA-Z0-9_]*
 INT_TEMPLATE     [0-9]+
 FLOAT_TEMPLATE   [0-9]+|([0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?
 STRING_TEMPLATE  '(\\\\|\\n|\\r|\\\"|\\0|\\'|[^'\\])*'
