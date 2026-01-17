@@ -15,8 +15,15 @@ from pathlib import Path
 class TrivialDBGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("TrivialDB 图形管理界面")
+        self.root.title("📦 TrivialDB 数据库管理系统")
         self.root.geometry("1200x800")
+        self.root.configure(bg="#ecf0f1")
+        
+        # 设置窗口图标（如果有）
+        try:
+            self.root.iconbitmap("icon.ico")  # Windows
+        except:
+            pass
         
         # 数据库配置
         self.current_db = None
@@ -33,8 +40,52 @@ class TrivialDBGUI:
         else:
             self.trivial_db_path = "../../build-win/bin/trivial_db.exe"
         
+        # 初始化样式
+        self.setup_styles()
         # 初始化界面
         self.setup_ui()
+    
+    def setup_styles(self):
+        """设置界面样式"""
+        style = ttk.Style()
+        
+        # 配置不同样式
+        style.configure("TFrame", background="#f0f0f0")
+        style.configure("TLabelFrame", background="#ffffff", bordercolor="#cccccc")
+        style.configure("TLabelFrame.Label", background="#ffffff", foreground="#333333")
+        
+        # 按钮样式
+        style.configure("Primary.TButton", 
+                       background="#007acc", 
+                       foreground="white",
+                       padding=(10, 5),
+                       font=("Arial", 10, "bold"))
+        
+        style.configure("Secondary.TButton",
+                       background="#6c757d",
+                       foreground="white",
+                       padding=(8, 4))
+        
+        style.configure("Danger.TButton",
+                       background="#dc3545",
+                       foreground="white",
+                       padding=(8, 4))
+        
+        style.configure("Success.TButton",
+                       background="#28a745",
+                       foreground="white",
+                       padding=(8, 4))
+        
+        # 标签样式
+        style.configure("Title.TLabel",
+                       font=("Arial", 12, "bold"),
+                       foreground="#2c3e50",
+                       background="#f0f0f0")
+        
+        style.configure("Subtitle.TLabel",
+                       font=("Arial", 10, "bold"),
+                       foreground="#34495e",
+                       background="#f0f0f0")
     
     def center_dialog(self, dialog, width=400, height=300):
         """将对话框居中显示在主窗口中心"""
@@ -46,8 +97,11 @@ class TrivialDBGUI:
         
     def setup_ui(self):
         """设置主界面布局"""
+        # 创建标题栏
+        self.create_header()
+        
         # 创建主框架
-        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame = ttk.Frame(self.root, padding="10", style="Main.TFrame")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
@@ -56,57 +110,114 @@ class TrivialDBGUI:
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(1, weight=1)
         
-        # 左侧导航栏
-        nav_frame = ttk.LabelFrame(main_frame, text="数据库操作", padding="10")
+        # 左侧导航栏 - 使用淡蓝色背景
+        nav_frame = ttk.LabelFrame(main_frame, text="数据库操作", padding="10", style="Nav.TLabelframe")
         nav_frame.grid(row=0, column=0, rowspan=2, sticky=(tk.N, tk.S, tk.W), padx=(0, 10))
         
+        # 统一按钮颜色 - 淡蓝色
+        button_color = "#e3f2fd"
+        hover_color = "#bbdefb"
+        active_color = "#90caf9"
+        text_color = "#1565c0"
+        
         # 数据库选择/创建
-        ttk.Button(nav_frame, text="创建数据库", command=self.create_database).grid(row=0, column=0, pady=5, sticky=tk.EW)
-        ttk.Button(nav_frame, text="选择数据库", command=self.select_database).grid(row=1, column=0, pady=5, sticky=tk.EW)
-        ttk.Button(nav_frame, text="删除数据库", command=self.drop_database).grid(row=2, column=0, pady=5, sticky=tk.EW)
+        self.create_nav_button(nav_frame, "创建数据库", self.create_database, 0, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "选择数据库", self.select_database, 1, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "删除数据库", self.drop_database, 2, button_color, hover_color, active_color, text_color)
         
-        # 表操作
-        ttk.Separator(nav_frame, orient='horizontal').grid(row=3, column=0, pady=10, sticky=tk.EW)
-        ttk.Label(nav_frame, text="表操作").grid(row=4, column=0, pady=5)
+        # 表操作分隔线
+        self.create_section_separator(nav_frame, "表操作", 3, 4)
         
-        ttk.Button(nav_frame, text="创建表", command=self.create_table).grid(row=5, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="显示表结构", command=self.show_table_structure).grid(row=6, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="重命名表", command=self.rename_table).grid(row=7, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="修改表结构", command=self.alter_table).grid(row=8, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="删除表", command=self.drop_table).grid(row=9, column=0, pady=2, sticky=tk.EW)
-        # 数据操作
-        ttk.Separator(nav_frame, orient='horizontal').grid(row=10, column=0, pady=10, sticky=tk.EW)
-        ttk.Label(nav_frame, text="数据操作").grid(row=11, column=0, pady=5)
+        self.create_nav_button(nav_frame, "创建表", self.create_table, 5, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "显示表结构", self.show_table_structure, 6, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "重命名表", self.rename_table, 7, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "修改表结构", self.alter_table, 8, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "删除表", self.drop_table, 9, button_color, hover_color, active_color, text_color)
         
-        ttk.Button(nav_frame, text="插入数据", command=self.insert_data).grid(row=12, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="查询数据", command=self.query_data).grid(row=13, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="更新数据", command=self.update_data).grid(row=14, column=0, pady=2, sticky=tk.EW)
-        ttk.Button(nav_frame, text="删除数据", command=self.delete_data).grid(row=15, column=0, pady=2, sticky=tk.EW)
+        # 数据操作分隔线
+        self.create_section_separator(nav_frame, "数据操作", 10, 11)
+        
+        self.create_nav_button(nav_frame, "插入数据", self.insert_data, 12, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "查询数据", self.query_data, 13, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "更新数据", self.update_data, 14, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "删除数据", self.delete_data, 15, button_color, hover_color, active_color, text_color)
         
         # SQL命令行和退出
-        ttk.Separator(nav_frame, orient='horizontal').grid(row=16, column=0, pady=10, sticky=tk.EW)
-        ttk.Button(nav_frame, text="SQL命令行", command=self.open_sql_console).grid(row=17, column=0, pady=5, sticky=tk.EW)
-        ttk.Button(nav_frame, text="退出程序", command=self.quit_app).grid(row=18, column=0, pady=5, sticky=tk.EW)
+        self.create_nav_button(nav_frame, "SQL命令行", self.open_sql_console, 17, button_color, hover_color, active_color, text_color)
+        self.create_nav_button(nav_frame, "退出程序", self.quit_app, 18, button_color, hover_color, active_color, text_color)
         
         # 状态栏
         self.status_var = tk.StringVar(value="就绪")
-        status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, 
+                            font=("Arial", 10), foreground="#1976d2", background="#e3f2fd")
         status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
-        # 主显示区域
-        display_frame = ttk.Frame(main_frame)
+        # 主显示区域 - 白色背景
+        display_frame = ttk.Frame(main_frame, style="Display.TFrame")
         display_frame.grid(row=0, column=1, rowspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
         display_frame.columnconfigure(0, weight=1)
         display_frame.rowconfigure(0, weight=1)
         
-        # 结果显示区域
-        self.result_text = scrolledtext.ScrolledText(display_frame, width=80, height=30)
+        # 结果显示区域 - 白色背景，黑色文字，增大字体
+        self.result_text = scrolledtext.ScrolledText(display_frame, width=80, height=30,
+                                                  font=("Consolas", 12),
+                                                  bg="white", fg="black")
         self.result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 数据库信息显示（移到右下角）
+        # 数据库信息显示
         self.db_info_var = tk.StringVar(value="未选择数据库")
-        db_info_label = ttk.Label(main_frame, textvariable=self.db_info_var, font=("Arial", 10, "bold"))
+        db_info_label = ttk.Label(main_frame, textvariable=self.db_info_var, 
+                                 font=("Arial", 11, "bold"), foreground="#1976d2",
+                                 background="#f5f5f5")
         db_info_label.grid(row=2, column=1, sticky=tk.SE, padx=10, pady=10)
+    
+    def create_header(self):
+        """创建标题栏"""
+        # 标题栏框架
+        header_frame = ttk.Frame(self.root, padding=(0, 5, 0, 5), style="Header.TFrame")
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        
+        # 标题标签
+        title_label = tk.Label(header_frame, text="📦 TrivialDB 数据库管理系统", 
+                             font=("Arial", 18, "bold"), fg="#2c3e50", bg="#ecf0f1")
+        title_label.pack(side=tk.LEFT, padx=15)
+        
+        # 副标题
+        subtitle_label = tk.Label(header_frame, text="轻量级数据库管理专家", 
+                               font=("Arial", 10), fg="#7f8c8d", bg="#ecf0f1")
+        subtitle_label.pack(side=tk.LEFT, padx=10)
+        
+        # 分隔线
+        separator = ttk.Separator(self.root, orient='horizontal')
+        separator.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+    
+    def create_nav_button(self, parent, text, command, row, button_color, hover_color, active_color, text_color):
+        """创建带颜色的导航按钮"""
+        btn = tk.Button(parent, text=text, command=command,
+                      font=("Arial", 10, "bold"), bg=button_color, fg=text_color,
+                      activebackground=active_color, activeforeground=text_color,
+                      relief="flat", padx=10, pady=5, cursor="hand2")
+        btn.grid(row=row, column=0, pady=3, sticky=tk.EW)
+        
+        # 添加悬停效果
+        def on_enter(e):
+            btn['background'] = hover_color
+            
+        def on_leave(e):
+            btn['background'] = button_color
+            
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
+    
+    def create_section_separator(self, parent, label_text, sep_row, label_row):
+        """创建分区分隔线"""
+        separator = ttk.Separator(parent, orient='horizontal')
+        separator.grid(row=sep_row, column=0, pady=8, sticky=tk.EW)
+        label = tk.Label(parent, text=label_text, font=("Arial", 10, "bold"), 
+                       fg="black", bg="#f0f0f0")
+        label.grid(row=label_row, column=0, pady=3)
     
     def execute_sql(self, sql_command, require_db=True):
         """执行SQL命令并返回结果"""
