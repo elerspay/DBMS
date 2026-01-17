@@ -1,32 +1,35 @@
-# TrivialDB —— A Simple Database Engine
+# TrivialDB - 轻量级数据库管理系统
 
-TrivialDB是一个简单的数据库管理系统，我们实现了大部分常见的SQL语句和类型。同时支持多表连接、复杂表达式运算、多主键约束、外键约束、CHECK约束、UNIQUE和DEFAULT约束、聚集查询、利用B+树索引的查询优化，同时，我们支持任意长度的VARCHAR类型。
+TrivialDB是一个功能完整的轻量级数据库管理系统，支持标准的SQL语法，提供图形化用户界面和命令行界面。
 
-## wsl编译及运行
+## ✨ 主要特性
 
-你需要有支持C++11特性的编译器，以及Bison和Flex两个库。本项目通过CMake来构建，在根目录运行
+- **完整的SQL支持**：支持DDL、DML、DQL等标准SQL操作
+- **图形用户界面**：基于Python Tkinter的直观可视化界面
+- **跨平台运行**：支持Windows和Linux系统
+- **数据完整性**：支持主键、外键、UNIQUE、NOT NULL等约束
+- **查询优化**：利用B+树索引优化查询性能
+- **复杂查询**：支持多表连接、聚集查询、嵌套表达式
 
-```shell
+## 🚀 快速开始
+
+### 环境要求
+- Python 3.6+ (用于GUI)
+- C++11兼容编译器
+- CMake 3.10+
+- Bison和Flex (用于SQL解析)
+
+### 编译数据库核心
+
+**Linux/WSL环境：**
+```bash
 mkdir build
 cd build
-cmake .. 
+cmake ..
 make -j8
 ```
 
-进行项目的编译，编译后的可执行程序在`build/bin`目录下。
-运行./trivial_db即可运行项目
-
-
-## Windows 编译说明
-
-WSL 中交叉编译生成 Windows 程序
-
-1. 在 WSL 中安装 mingw-w64：
-```bash
-sudo apt install mingw-w64
-```
-
-2. 在项目根目录手动编译：
+**Windows环境（交叉编译）：**
 ```bash
 mkdir build-win
 cd build-win
@@ -36,141 +39,141 @@ cmake .. \
 make -j8
 ```
 
-编译完成后会在bin文件夹内生成 `trivial_db.exe` 文件，可直接在 Windows 中运行。
+### 运行图形界面
 
-## 图形用户界面运行
-
-进入src/gui目录，运行`python3 trivialdb_gui.py`即可启动图形用户界面。
-
-## 表操作功能示例
-
-```sql
--- 重命名表
-RENAME TABLE old_table_name TO new_table_name;
-
--- 添加新列
-ALTER TABLE employees ADD COLUMN phone VARCHAR(15);
-
--- 删除列
-ALTER TABLE employees DROP COLUMN phone;
-
--- 重命名列
-ALTER TABLE employees RENAME COLUMN name TO full_name;
-
--- 修改列类型
-ALTER TABLE employees MODIFY COLUMN salary DOUBLE;
+**方式1：使用启动器（推荐）**
+```bash
+# 在项目根目录运行
+python3 run_gui.py
 ```
 
-## 系统功能
-
-### 数据类型
-
-数据库支持的基本类型有：
-
- * 整型（INT）
- * 浮点型（FLOAT）
- * 字符串型（VARCHAR）
- * 日期型（DATE），日期格式`YYYY-MM-dd`
-
-日期类型的字面值和字符串相同，在实现中如果必要可以转换为字符串。
-
-### SQL语句
-
-我们支持的SQL语句一共有如下几种
-
- * 插入语句：`INSERT INTO ... VALUES ...`
- * 删除语句：`DELETE FROM ... WHERE ...`
- * 查询语句：`SELECT ... FROM ... WHERE ...`
- * 更新语句：`UPDATE ... SET ... WHERE ...`
- * 创建数据库：`CREATE DATABASE ...`
- * 删除数据库：`DROP DATABASE ...`
- * 切换数据库：`USE ...`
- * 显示数据库信息：`SHOW DATABASE ...`
- * 创建表：`CREATE TABLE ...`
- * 删除表：`DROP TABLE ...`
- * 显示表信息：`SHOW TABLE ...`
- * 创建索引：`CREATE INDEX ...`
- * 删除索引：`DROP INDEX ...`
- * 重命名表：`RENAME TABLE ... TO ...`
- * 修改表结构：`ALTER TABLE ...`
-   * 添加列：`ALTER TABLE ... ADD COLUMN ...`
-   * 删除列：`ALTER TABLE ... DROP COLUMN ...`
-   * 重命名列：`ALTER TABLE ... RENAME COLUMN ... TO ...`
-   * 修改列类型：`ALTER TABLE ... MODIFY COLUMN ...`
-
-### 复杂表达式处理
-
-表达式大致可以分为两种：算术表达式和条件表达式。由于采用Bison进行解析，可以支持任意深度嵌套的复杂表达式。我们所支持的基本运算主要如下
-
- * 四则运算，针对整数和浮点数进行。
- * 比较运算符，即<=, <, =, >, >=, <>。
- * 模糊匹配运算符，即LIKE，其实现采用C++11的正则表达式库。
- * 范围匹配运算符，即IN，可以在表的CHECK约束中以及WHERE子句中使用。
- * 空值判定运算符，即IS NULL和IS NOT NULL两种。
- * 逻辑运算，包含NOT、AND和OR三种。
-
-以下是一些复杂表达式运算的例子
-
-```sql
-UPDATE customer SET age = age + 1 WHERE age < 18 AND gender = 'F';
-SELECT * FROM customer WHERE name LIKE 'John %son';
-SELECT * FROM students WHERE grades IN ('A', 'B', 'C');
-SELECT * FROM students WHERE name IS NOT NULL;
+**方式2：直接运行GUI**
+```bash
+cd src/gui
+python3 trivialdb_gui.py
 ```
 
-### 聚集查询
-我们实现了五种聚集查询函数COUNT、SUM、AVG、MIN和MAX。其中COUNT不支持DISTINCT关键字。例如
-
-```sql
-SELECT COUNT(*) FROM customer WHERE age > 18;
-SELECT AVG(age) FROM customer WHERE age <= 18;
+### 运行命令行界面Linux/WSL环境
+```bash
+# 进入编译目录
+cd build/bin  
+./trivial_db   
 ```
-### 属性完整性约束
-我们支持多种属性完整性约束，分别是
 
- * 主键约束。一个表可以有多个列联合起来作为主键，只有在所有主键都相同时才认为两条记录有冲突，即这种情况下主键是一个元组。
- * 外键约束，每个域都可以有外键约束，引用另外一个表的主键。
- * UNIQUE约束，该约束限制某一列的值不能重复。
- * NOT NULL约束，该约束限制某一列不能有空值。
- * DEFAULT约束，该约束可以在INSERT语句不指定值是给某列赋予一个默认值。
- * CHECK约束，该约束可以对表中元素的值添加条件表达式的检查。
-
-下面是一个简单的例子，注意如果在多个列都指定了PRIMARY KEY，那么就认为主键是一个元组，而不是有多个主键。例如Infos表的主键为(PersonID, InfoID)。
-```sql
-CREATE TABLE Persons (
-    PersonID int PRIMARY KEY NOT NULL,
-    Name varchar(20),
-    Age int DEFAULT 1,
-    Gender varchar(1),
-    CHECK (Age >= 1 AND Age <= 100),
-    CHECK (Gender IN ('F', 'M'))
-);
-
-CREATE TABLE Infos (
-    PersonID int PRIMARY KEY,
-    InfoID int PRIMARY KEY,
-    FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
-);
+### 运行命令行界面windows环境
+```bash
+# 进入编译目录
+cd build-win/bin  
+双击trivial_db.exe   
 ```
-### 多表连接查询
-在SELECT语句中，我们支持任意多表的连接操作，例如
-```sql
-SELECT * FROM A, B, C WHERE A.ID = B.ID AND C.Name = A.Name
-```
-并且，对于多个表的连接中形如A.Col1 = B.Col2的条件，那么如果这两个列的某一个拥有索引，会利用索引进行查询优化。例如如下查询就可以优化
 
-```sql
-SELECT * FROM Persons, Infos WHERE Persons.PersonID = Infos.PersonID;
-SELECT * FROM Persons, Infos, Datas WHERE Persons.PersonID = Infos.PersonID AND Datas.N IS NOT NULL;
-SELECT * FROM Persons, Infos, Datas WHERE Persons.PersonID = Infos.PersonID AND Datas.ID = Infos.PersonID;
-```
-具体的优化方法以及何种查询可以优化见文档中"查询优化"部分。
-### 表别名
-我们在多表连接查询时支持通过别名（alias）的方式对一个表进行连接，例如
-```sql
-SELECT * FROM Persons AS P1, Persons AS P2 WHERE P1.PersonID = P2.PersonID;
-```
-## Acknowledgments
 
-* 参考了往届的项目 https://github.com/Harry-Chen/SimpleDB
-* SQL解析器部分参考了 https://github.com/thinkpad20/sql
+## 📊 功能特性
+
+### 支持的SQL语句
+- ✅ `CREATE/DROP DATABASE` - 数据库管理
+- ✅ `USE` - 数据库切换  
+- ✅ `CREATE/DROP TABLE` - 表管理
+- ✅ `INSERT/UPDATE/DELETE` - 数据操作
+- ✅ `SELECT` - 数据查询（支持JOIN、WHERE、GROUP BY、HAVING）
+- ✅ `ALTER TABLE` - 表结构修改（ADD/DROP/RENAME/MODIFY COLUMN）
+- ✅ `RENAME TABLE` - 表重命名
+- ✅ `SHOW DATABASE/TABLE` - 信息显示
+
+### 数据类型支持
+- **INT** - 整型
+- **FLOAT** - 浮点型  
+- **VARCHAR** - 变长字符串（任意长度）
+- **DATE** - 日期类型（YYYY-MM-dd格式）
+
+### 完整性约束
+- 🔑 **PRIMARY KEY** - 主键约束（支持复合主键）
+- 🔗 **FOREIGN KEY** - 外键约束
+- 🔍 **UNIQUE** - 唯一性约束
+- 🚫 **NOT NULL** - 非空约束
+- ⚡ **DEFAULT** - 默认值约束
+- ✓ **CHECK** - 条件检查约束
+
+### 高级功能
+- **多表连接查询** - 支持任意多表的JOIN操作
+- **聚集函数** - COUNT、SUM、AVG、MIN、MAX
+- **复杂表达式** - 支持嵌套算术和逻辑表达式
+- **模糊查询** - LIKE运算符支持正则表达式
+- **索引优化** - B+树索引加速查询
+- **事务支持** - 基本的ACID特性
+
+## 🖥️ 图形界面功能
+
+### 数据库操作
+- 创建/选择/删除数据库
+- 实时状态显示
+
+### 表管理  
+- 可视化创建表（支持所有约束）
+- 显示表结构
+- 重命名表
+- 修改表结构（添加/删除/重命名列）
+- 删除表
+
+### 数据操作
+- 插入数据（支持批量插入）
+- 查询数据（高级查询界面）
+- 更新数据
+- 删除数据
+
+### SQL控制台
+- 交互式SQL命令行
+- 语法高亮和自动完成
+- 执行结果显示
+
+## 📁 项目结构
+
+```
+TrivialDB/
+├── database/          # 数据库文件存储目录
+├── src/
+│   ├── algo/         # 算法模块（搜索、排序）
+│   ├── btree/        # B+树索引实现
+│   ├── database/     # 数据库核心模块
+│   ├── expression/   # 表达式处理
+│   ├── fs/          # 文件系统管理
+│   ├── gui/         # 图形用户界面
+│   ├── index/       # 索引管理
+│   ├── page/        # 页面管理
+│   ├── parser/      # SQL解析器
+│   ├── table/       # 表管理
+│   └── utils/       # 工具函数
+├── testcase/        # 测试用例
+├── build/          # Linux编译目录
+├── build-win/      # Windows编译目录
+├── run_gui.py      # GUI启动器
+└── README.md       # 项目说明
+```
+
+## 🔧 开发指南
+
+### 代码架构
+项目采用模块化设计，核心模块包括：
+1. **SQL解析器** - 基于Bison/Flex的词法和语法分析
+2. **存储引擎** - 基于页面的文件存储管理
+3. **索引模块** - B+树索引实现
+4. **查询处理** - 表达式计算和查询优化
+5. **事务管理** - 基本的并发控制
+
+### 扩展开发
+如需添加新功能，建议参考现有模块：
+- 新SQL语法：修改`src/parser/`中的语法规则
+- 新数据类型：在`src/table/`中添加类型支持
+- 新约束类型：在`src/table/constraint`中实现
+- GUI新功能：修改`src/gui/trivialdb_gui.py`
+
+## 🧪 测试验证
+
+项目包含完整的测试用例：
+```bash
+# 运行功能测试
+cd testcase
+full_functionality_test.sql文件为测试用例SQL语句
+```
+
+**TrivialDB** - 让数据库管理变得简单高效！ 🎯
