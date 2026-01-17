@@ -164,6 +164,7 @@ bool table_manager::create(const char *table_name, const table_header_t *header)
 	tname = table_name;
 	// 文件存储在项目根目录的database/文件夹下
 	std::string tdata = "../../database/" + tname + ".tdata";
+	std::string thead = "../../database/" + tname + ".thead";
 
 	pg = std::make_shared<pager>(tdata.c_str());
 	btr = std::make_shared<int_btree>(pg.get(), 0);
@@ -173,6 +174,13 @@ bool table_manager::create(const char *table_name, const table_header_t *header)
 	allocate_temp_record();
 	load_indices();
 	load_check_constraints();
+
+	// 立即保存表头文件
+	std::ofstream ofs(thead, std::ios::binary);
+	if(ofs) {
+		ofs.write((char*)&header, sizeof(header));
+		ofs.close();
+	}
 
 	is_mirror = false;
 	return is_open = true;
