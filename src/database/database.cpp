@@ -192,8 +192,19 @@ void database::rename_table(const char *old_name, const char *new_name)
 		return;
 	}
 	
+	// 更新表头中的表名
+	tables[id]->update_table_name(new_name);
+	
+	// 立即保存更新后的数据库信息到文件
+	std::string db_filename = std::string(info.db_name) + ".database";
+	std::ofstream ofs(db_filename, std::ios::binary);
+	if(ofs) {
+		ofs.write((char*)&info, sizeof(info));
+	}
+	
 	delete old_table;
 	std::printf("[Info] Table renamed from `%s` to `%s`\n", old_name, new_name);
+	std::printf("[Info] Database info updated and saved to disk.\n");
 }
 
 void database::alter_table_add_column(const char *table_name, const field_item_t *field)

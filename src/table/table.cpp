@@ -207,9 +207,37 @@ bool table_manager::alter_table_add_column(const field_item_t *field)
 	// 保存旧表头用于回滚
 	table_header_t old_header = header;
 	
-	// 添加新列到表头
-	int new_col_index = header.col_num++;
+	// 添加新列到表头 - 插入到第一列位置
+	int new_col_index = 0;
+	
+	// 为所有列腾出位置（将所有列向后移动一位）
+	for(int i = header.col_num; i > 0; --i) {
+		std::strcpy(header.col_name[i], header.col_name[i - 1]);
+		header.col_type[i] = header.col_type[i - 1];
+		header.col_length[i] = header.col_length[i - 1];
+		header.col_offset[i] = header.col_offset[i - 1];
+		
+		// 更新标志位
+		if(header.flag_notnull & (1 << (i - 1))) header.flag_notnull |= (1 << i);
+		else header.flag_notnull &= ~(1 << i);
+		
+		if(header.flag_primary & (1 << (i - 1))) header.flag_primary |= (1 << i);
+		else header.flag_primary &= ~(1 << i);
+		
+		// 移动索引标志位
+		if(header.flag_indexed & (1 << (i - 1))) header.flag_indexed |= (1 << i);
+		else header.flag_indexed &= ~(1 << i);
+		
+		if(header.flag_unique & (1 << (i - 1))) header.flag_unique |= (1 << i);
+		else header.flag_unique &= ~(1 << i);
+		
+		if(header.flag_default & (1 << (i - 1))) header.flag_default |= (1 << i);
+		else header.flag_default &= ~(1 << i);
+	}
+	
+	// 插入新列到第一位置
 	std::strncpy(header.col_name[new_col_index], field->name, MAX_NAME_LEN);
+	header.col_num++;
 	// 正确转换 field_type_t (parser) 到 COL_TYPE_* (storage)
 	int col_type;
 	switch(field->type) {
@@ -414,6 +442,33 @@ bool table_manager::alter_table_rename_column(const char *old_name, const char *
 	ofs.close();
 	
 	std::printf("[Info] ALTER TABLE RENAME COLUMN: column `%s` renamed to `%s` successfully\n", old_name, new_name);
+	return true;
+}
+
+bool table_manager::update_table_name(const char *new_name)
+{
+	if(!is_open) return false;
+	
+	// 保存旧表头用于回滚
+	table_header_t old_header = header;
+	
+	// 更新表名
+	std::strncpy(header.table_name, new_name, MAX_NAME_LEN);
+	
+	// 保存修改后的表头
+	std::string thead = tname + ".thead";
+	std::ofstream ofs(thead, std::ios::binary);
+	if(!ofs) {
+		std::fprintf(stderr, "[Error] UPDATE TABLE NAME: failed to save table header\n");
+		// 回滚表头修改
+		header = old_header;
+		return false;
+	}
+	
+	ofs.write((char*)&header, sizeof(header));
+	ofs.close();
+	
+	std::printf("[Info] UPDATE TABLE NAME: table name updated to `%s`\n", new_name);
 	return true;
 }
 
@@ -624,6 +679,41 @@ int table_manager::insert_record()
 	int *rid = (int*)tmp_record;
 	if(header.is_main_index_additional)
 		*rid = header.auto_inc;
+
+	// 验证列数是否匹配
+	int provided_cols = 0;
+	for(int i = 0; i < header.col_num; ++i) {
+		if(!(*tmp_null_mark & (1u << i))) {
+			provided_cols++;
+		}
+	}
+	
+	// 计算必须提供的列数（非空且无默认值的列）
+	int required_cols = 0;
+	for(int i = 0; i < header.col_num; ++i) {
+		if((header.flag_notnull & (1u << i)) && !(header.flag_default & (1u << i))) {
+			required_cols++;
+		}
+	}
+	
+	if(provided_cols < required_cols) {
+		std::fprintf(stderr, "[Error] INSERT: 列数不匹配 (需要至少 %d 个非空值，提供了 %d 个)\n", 
+			required_cols, provided_cols);
+		return false;
+	}
+	
+	// 为未提供但有默认值的列设置默认值
+	for(int i = 0; i < header.col_num; ++i) {
+		if((*tmp_null_mark & (1u << i)) && (header.flag_default & (1u << i))) {
+			// 如果列允许为空且有默认值，则设置默认值
+			std::memcpy(
+				tmp_record + header.col_offset[i],
+				header.default_values[i],
+				header.col_length[i]
+			);
+			*tmp_null_mark &= ~(1u << i); // 标记为非空
+		}
+	}
 
 	if(header.check_constaint_num != 0)
 	{
