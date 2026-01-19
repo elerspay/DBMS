@@ -42,24 +42,32 @@ class TrivialDBGUI:
         # 判断当前操作系统
         system = platform.system()
         
+        # 获取 GUI 脚本所在目录，用于计算相对路径
+        gui_dir = os.path.dirname(os.path.abspath(__file__))
+        
         if system == "Windows":
             # Windows 平台
-            default_path = "../../build-win/bin/trivial_db.exe"
+            default_rel_path = "../../build-win/bin/trivial_db.exe"
         else:
             # Linux/WSL 平台
-            default_path = "../../build/bin/trivial_db"
+            default_rel_path = "../../build/bin/trivial_db"
+        
+        # 默认绝对路径
+        default_path = os.path.normpath(os.path.join(gui_dir, default_rel_path))
         
         # 尝试读取配置文件覆盖默认值
-        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        config_path = os.path.join(gui_dir, "config.json")
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r') as f:
                     config = json.load(f)
                 # 根据平台选择配置
                 if system == "Windows":
-                    return config.get("db_path_win", config.get("db_path", default_path))
+                    rel_path = config.get("db_path_win", config.get("db_path", default_rel_path))
                 else:
-                    return config.get("db_path_linux", config.get("db_path", default_path))
+                    rel_path = config.get("db_path_linux", config.get("db_path", default_rel_path))
+                # 转换为绝对路径
+                return os.path.normpath(os.path.join(gui_dir, rel_path))
             except:
                 pass
         
@@ -252,13 +260,15 @@ class TrivialDBGUI:
             else:
                 full_command = f"{sql_command}\nEXIT;"
             
-            # 执行命令
+            # 执行命令 - 设置工作目录为可执行文件所在目录
+            exe_dir = os.path.dirname(os.path.abspath(self.trivial_db_path))
             process = subprocess.Popen(
                 [self.trivial_db_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                cwd=exe_dir
             )
             
             stdout, stderr = process.communicate(input=full_command)
