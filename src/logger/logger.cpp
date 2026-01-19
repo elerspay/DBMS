@@ -54,8 +54,20 @@ void Logger::ensure_initialized()
     
     initialized = true;
     
-    // 记录系统启动
-    log(LogLevel::INFO, OperationType::SYSTEM_START, "", true, "TrivialDB Logger initialized");
+    // 注意：这里不能调用 log()，否则会导致死锁
+    // 因为 write_log() 已经持有锁，而 log() -> write_log() 会再次尝试获取锁
+    // 直接写入启动日志
+    if (log_file.is_open()) {
+        log_file << "================================================================================" << std::endl;
+        log_file << "[" << get_timestamp() << "] [INFO] [" << current_user << "] SYSTEM_START" << std::endl;
+        log_file << "--------------------------------------------------------------------------------" << std::endl;
+        log_file << "Database: -" << std::endl;
+        log_file << "Status: SUCCESS" << std::endl;
+        log_file << "Message: TrivialDB Logger initialized" << std::endl;
+        log_file << "================================================================================" << std::endl;
+        log_file << std::endl;
+        log_file.flush();
+    }
 }
 
 Logger* Logger::get_instance()
