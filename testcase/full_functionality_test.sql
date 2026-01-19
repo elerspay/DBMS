@@ -93,6 +93,53 @@ SELECT MIN(age) FROM employees;
 SELECT SUM(budget) FROM departments;
 
 -----------------------------------------------
+-- 新增：GROUP BY 和 ORDER BY 测试
+-----------------------------------------------
+
+-- GROUP BY 基础测试
+-- 按部门分组统计
+SELECT dept_id, COUNT(*), AVG(salary) 
+FROM employees AS a
+GROUP BY dept_id;
+
+-- 按部门和年龄分组统计
+SELECT dept_id, age, COUNT(*), MAX(salary)
+FROM employees AS a
+GROUP BY dept_id, age;
+
+-- GROUP BY + HAVING 测试
+-- 统计平均薪资大于75000的部门
+SELECT dept_id, AVG(salary), COUNT(*)
+FROM employees AS a
+GROUP BY dept_id 
+HAVING AVG(salary) > 75000.0;
+
+-- 统计员工数量大于1的年龄组
+SELECT age, COUNT(*)
+FROM employees AS a
+GROUP BY age
+HAVING COUNT(*) > 1;
+
+-- ORDER BY 基础测试
+-- 按薪资升序排序
+SELECT emp_id, name, salary 
+FROM employees AS a
+ORDER BY salary ASC;
+
+-- 按年龄降序排序
+SELECT emp_id, name, age, salary
+FROM employees AS a
+ORDER BY age DESC;
+
+-- 多列排序：先按部门，再按薪资降序
+SELECT emp_id, name, dept_id, salary
+FROM employees AS a
+ORDER BY dept_id ASC, salary DESC;
+
+
+-----------------------------------------------
+
+-----------------------------------------------
 -- 第五部分：多表连接查询测试 (JOIN)
 -----------------------------------------------
 
