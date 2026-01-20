@@ -943,7 +943,6 @@ class TrivialDBGUI:
             columns = columns_entry.get().strip()
             condition = condition_entry.get().strip()
             group_by = group_by_entry.get().strip()
-            having = having_entry.get().strip()
             order_by = order_by_entry.get().strip()
             order_direction = order_direction_var.get()
             
