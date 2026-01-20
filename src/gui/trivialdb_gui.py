@@ -10,6 +10,7 @@ from tkinter import ttk, messagebox, scrolledtext, simpledialog
 import subprocess
 import os
 import json
+import platform
 from pathlib import Path
 
 class TrivialDBGUI:
@@ -28,22 +29,49 @@ class TrivialDBGUI:
         # 数据库配置
         self.current_db = None
         
-        # 读取配置文件
-        config_path = os.path.join(os.path.dirname(__file__), "config.json")
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    config = json.load(f)
-                self.trivial_db_path = config.get("db_path", "../../build-win/bin/trivial_db.exe")
-            except:
-                self.trivial_db_path = "../../build-win/bin/trivial_db.exe"
-        else:
-            self.trivial_db_path = "../../build-win/bin/trivial_db.exe"
+        # 自动识别平台并设置可执行文件路径
+        self.trivial_db_path = self._detect_db_path()
         
         # 初始化样式
         self.setup_styles()
         # 初始化界面
         self.setup_ui()
+    
+    def _detect_db_path(self):
+        """自动检测平台并返回正确的数据库可执行文件路径"""
+        # 判断当前操作系统
+        system = platform.system()
+        
+        # 获取 GUI 脚本所在目录，用于计算相对路径
+        gui_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        if system == "Windows":
+            # Windows 平台
+            default_rel_path = "../../build-win/bin/trivial_db.exe"
+        else:
+            # Linux/WSL 平台
+            default_rel_path = "../../build/bin/trivial_db"
+        
+        # 默认绝对路径
+        default_path = os.path.normpath(os.path.join(gui_dir, default_rel_path))
+        
+        # 尝试读取配置文件覆盖默认值
+        config_path = os.path.join(gui_dir, "config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                # 根据平台选择配置
+                if system == "Windows":
+                    rel_path = config.get("db_path_win", config.get("db_path", default_rel_path))
+                else:
+                    rel_path = config.get("db_path_linux", config.get("db_path", default_rel_path))
+                # 转换为绝对路径
+                return os.path.normpath(os.path.join(gui_dir, rel_path))
+            except:
+                pass
+        
+        return default_path
     
     def setup_styles(self):
         """设置界面样式"""
@@ -232,13 +260,15 @@ class TrivialDBGUI:
             else:
                 full_command = f"{sql_command}\nEXIT;"
             
-            # 执行命令
+            # 执行命令 - 设置工作目录为可执行文件所在目录
+            exe_dir = os.path.dirname(os.path.abspath(self.trivial_db_path))
             process = subprocess.Popen(
                 [self.trivial_db_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                cwd=exe_dir
             )
             
             stdout, stderr = process.communicate(input=full_command)
