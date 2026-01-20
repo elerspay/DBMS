@@ -1028,15 +1028,12 @@ void dbms::select_rows(const select_info_t* info)
 
         if (exprs.size() == 0) {
             // SELECT * 的情况，需要为所有列创建表达式
-            printf("[DEBUG] SELECT * detected, creating expressions for all columns\n");
             for (size_t i = 0; i < required_tables.size(); ++i) {
                 table_manager* table = required_tables[i];
                 int col_count = table->get_column_num();
-                printf("[DEBUG] Table %s has %d columns\n", table->get_table_name(), col_count);
                 // 排除 __rowid__ 列，并反向遍历以保持列定义顺序（存储顺序是反的）
                 for (int j = col_count - 2; j >= 0; --j) {
                     const char* col_name = table->get_column_name(j);
-                    printf("[DEBUG] Creating expression for column %s\n", col_name);
 
                     column_ref_t* col_ref = new column_ref_t;
                     col_ref->table = nullptr;
@@ -1057,7 +1054,6 @@ void dbms::select_rows(const select_info_t* info)
                         }));
                 }
             }
-            printf("[DEBUG] Created %zu expressions for SELECT *\n", actual_exprs.size());
         }
 
         // 遍历记录
@@ -1067,72 +1063,57 @@ void dbms::select_rows(const select_info_t* info)
                 const std::vector<record_manager*>& records,
                 const std::vector<int>&)
             {
-                // 构建当前行的字符串表示
-                std::string current_row;
+                    // 构建当前行的字符串表示
+                    std::string current_row;
 
-                // 为 DISTINCT 构建行字符串
-                for (size_t i = 0; i < actual_exprs.size(); ++i) {
-                    printf("[DEBUG] Evaluating expression %zu: ", i);
-                    if (actual_exprs[i]->term_type == TERM_COLUMN_REF) {
-                        printf("column %s.%s\n",
-                            actual_exprs[i]->column_ref->table ? actual_exprs[i]->column_ref->table : "NULL",
-                            actual_exprs[i]->column_ref->column);
-                    }
+                    // 为 DISTINCT 构建行字符串
+                    for (size_t i = 0; i < actual_exprs.size(); ++i) {
+                        expression ret;
+                        try {
+                            ret = expression::eval(actual_exprs[i]);
+                        }
+                        catch (const char* e) {
+                            std::fprintf(stderr, "%s\n", e);
+                            // 内存由 shared_ptr 自动管理，无需手动清理
+                            return false;
+                        }
 
-                    expression ret;
-                    try {
-                        ret = expression::eval(actual_exprs[i]);
-                        printf("[DEBUG] Result type: %d\n", ret.type);
-                    }
-                    catch (const char* e) {
-                        std::fprintf(stderr, "%s\n", e);
-                        // 内存由 shared_ptr 自动管理，无需手动清理
-                        return false;
-                    }
-
-                    // 将值转换为字符串用于 DISTINCT
-                    std::string value_str;
-                    switch (ret.type)
-                    {
-                    case TERM_INT:
-                        value_str = std::to_string(ret.val_i);
-                        printf("[DEBUG]   int value: %d\n", ret.val_i);
-                        break;
-                    case TERM_FLOAT: {
-                        char buf[64];
-                        std::snprintf(buf, sizeof(buf), "%f", ret.val_f);
-                        value_str = buf;
-                        printf("[DEBUG]   float value: %f\n", ret.val_f);
-                        break;
-                    }
-                    case TERM_STRING:
-                        value_str = ret.val_s ? ret.val_s : "NULL";
-                        printf("[DEBUG]   string value: %s\n", ret.val_s ? ret.val_s : "NULL");
-                        break;
-                    case TERM_BOOL:
-                        value_str = ret.val_b ? "TRUE" : "FALSE";
-                        printf("[DEBUG]   bool value: %s\n", ret.val_b ? "TRUE" : "FALSE");
-                        break;
-                    case TERM_DATE: {
-                        char date_buf[32];
-                        time_t time = ret.val_i;
-                        auto tm = std::localtime(&time);
-                        std::strftime(date_buf, 32, DATE_TEMPLATE, tm);
-                        value_str = date_buf;
-                        printf("[DEBUG]   date value: %s\n", date_buf);
-                        break;
-                    }
-                    case TERM_NULL:
-                        value_str = "NULL";
-                        printf("[DEBUG]   null value\n");
-                        break;
-                    default:
-                        // 注意：此 default 分支用于处理未预期的类型值（如 TERM_NONE=0 或 TERM_COLUMN_REF 等）
-                        // 正常情况下不应到达此处，若到达说明 expression::eval() 返回了非终结类型
-                        // 这不是错误，只是标记为 UNKNOWN 继续处理，不影响最终输出
-                        value_str = "UNKNOWN";
-                        printf("[DEBUG]   unknown type\n");
-                    }
+                        // 将值转换为字符串用于 DISTINCT
+                        std::string value_str;
+                        switch (ret.type)
+                        {
+                        case TERM_INT:
+                            value_str = std::to_string(ret.val_i);
+                            break;
+                        case TERM_FLOAT: {
+                            char buf[64];
+                            std::snprintf(buf, sizeof(buf), "%f", ret.val_f);
+                            value_str = buf;
+                            break;
+                        }
+                        case TERM_STRING:
+                            value_str = ret.val_s ? ret.val_s : "NULL";
+                            break;
+                        case TERM_BOOL:
+                            value_str = ret.val_b ? "TRUE" : "FALSE";
+                            break;
+                        case TERM_DATE: {
+                            char date_buf[32];
+                            time_t time = ret.val_i;
+                            auto tm = std::localtime(&time);
+                            std::strftime(date_buf, 32, DATE_TEMPLATE, tm);
+                            value_str = date_buf;
+                            break;
+                        }
+                        case TERM_NULL:
+                            value_str = "NULL";
+                            break;
+                        default:
+                            // 注意：此 default 分支用于处理未预期的类型值（如 TERM_NONE=0 或 TERM_COLUMN_REF 等）
+                            // 正常情况下不应到达此处，若到达说明 expression::eval() 返回了非终结类型
+                            // 这不是错误，只是标记为 UNKNOWN 继续处理，不影响最终输出
+                            value_str = "UNKNOWN";
+                        }
 
                     if (i != 0) current_row += "|";
                     current_row += value_str;
