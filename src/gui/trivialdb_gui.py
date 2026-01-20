@@ -18,7 +18,7 @@ class TrivialDBGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("📦 TrivialDB 数据库管理系统")
-        self.root.geometry("1200x900")
+        self.root.geometry("1400x1250")
         self.root.configure(bg="#ecf0f1")
         
         # 设置窗口图标（如果有）
@@ -124,8 +124,8 @@ class TrivialDBGUI:
         """显示登录对话框"""
         dialog = tk.Toplevel(self.root)
         dialog.title("用户登录")
-        dialog.geometry("300x200")
-        self.center_dialog(dialog, 300, 200)
+        dialog.geometry("400x250")
+        self.center_dialog(dialog, 400, 250)
         
         ttk.Label(dialog, text="用户名:").pack(pady=5)
         user_entry = ttk.Entry(dialog, width=20)
@@ -373,8 +373,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("创建数据库")
-        dialog.geometry("300x150")
-        self.center_dialog(dialog, 300, 150)
+        dialog.geometry("400x200")
+        self.center_dialog(dialog, 400, 200)
         
         ttk.Label(dialog, text="数据库名称:").pack(pady=10)
         name_entry = ttk.Entry(dialog, width=20)
@@ -408,8 +408,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("选择数据库")
-        dialog.geometry("300x150")
-        self.center_dialog(dialog, 300, 150)
+        dialog.geometry("400x200")
+        self.center_dialog(dialog, 400, 200)
         
         ttk.Label(dialog, text="数据库名称:").pack(pady=10)
         name_entry = ttk.Entry(dialog, width=20)
@@ -440,8 +440,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("创建表")
-        dialog.geometry("400x300")
-        self.center_dialog(dialog, 400, 300)
+        dialog.geometry("500x400")
+        self.center_dialog(dialog, 500, 400)
         
         ttk.Label(dialog, text="表名:").pack(pady=5)
         name_entry = ttk.Entry(dialog, width=30)
@@ -505,8 +505,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("重命名表")
-        dialog.geometry("300x200")
-        self.center_dialog(dialog, 300, 200)
+        dialog.geometry("350x250")
+        self.center_dialog(dialog, 350, 250)
         
         ttk.Label(dialog, text="原表名:").pack(pady=5)
         old_entry = ttk.Entry(dialog, width=20)
@@ -532,8 +532,8 @@ class TrivialDBGUI:
         """修改表结构对话框"""
         self.alter_dialog = tk.Toplevel(self.root)
         self.alter_dialog.title("修改表结构")
-        self.alter_dialog.geometry("400x400")
-        self.center_dialog(self.alter_dialog, 400, 400)
+        self.alter_dialog.geometry("550x5000")
+        self.center_dialog(self.alter_dialog, 550, 500)
         
         # 表名输入
         ttk.Label(self.alter_dialog, text="表名:").pack(pady=5)
@@ -647,8 +647,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("删除数据库")
-        dialog.geometry("300x150")
-        self.center_dialog(dialog, 300, 150)
+        dialog.geometry("400x200")
+        self.center_dialog(dialog, 400, 200)
         
         ttk.Label(dialog, text="数据库名称:").pack(pady=10)
         name_entry = ttk.Entry(dialog, width=20)
@@ -880,8 +880,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("删除表")
-        dialog.geometry("300x150")
-        self.center_dialog(dialog, 300, 150)
+        dialog.geometry("300x180")
+        self.center_dialog(dialog, 300, 180)
         
         ttk.Label(dialog, text="表名:").pack(pady=10)
         name_entry = ttk.Entry(dialog, width=20)
@@ -918,8 +918,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("插入数据")
-        dialog.geometry("400x300")
-        self.center_dialog(dialog, 400, 300)
+        dialog.geometry("450x400")
+        self.center_dialog(dialog, 450, 400)
         
         ttk.Label(dialog, text="表名:").pack(pady=5)
         table_entry = ttk.Entry(dialog, width=30)
@@ -956,8 +956,6 @@ class TrivialDBGUI:
                 sql += f" WHERE {condition}"
             if group_by:
                 sql += f" GROUP BY {group_by}"
-            if having:
-                sql += f" HAVING {having}"
             if order_by:
                 sql += f" ORDER BY {order_by} {order_direction}"
             sql += ";"
@@ -969,8 +967,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("高级查询")
-        dialog.geometry("500x500")
-        self.center_dialog(dialog, 500, 500)
+        dialog.geometry("600x550")
+        self.center_dialog(dialog, 600, 550)
         
         ttk.Label(dialog, text="表名 (多表用逗号分隔):").pack(pady=5)
         tables_entry = ttk.Entry(dialog, width=40)
@@ -987,10 +985,6 @@ class TrivialDBGUI:
         ttk.Label(dialog, text="分组依据 (GROUP BY子句):").pack(pady=5)
         group_by_entry = ttk.Entry(dialog, width=40)
         group_by_entry.pack(pady=5)
-        
-        ttk.Label(dialog, text="分组条件 (HAVING子句):").pack(pady=5)
-        having_entry = ttk.Entry(dialog, width=40)
-        having_entry.pack(pady=5)
         
         ttk.Label(dialog, text="排序依据 (ORDER BY子句):").pack(pady=5)
         order_by_entry = ttk.Entry(dialog, width=40)
@@ -1033,8 +1027,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("更新数据")
-        dialog.geometry("400x250")
-        self.center_dialog(dialog, 400, 250)
+        dialog.geometry("400x350")
+        self.center_dialog(dialog, 400, 350)
         
         ttk.Label(dialog, text="表名:").pack(pady=5)
         table_entry = ttk.Entry(dialog, width=30)
@@ -1080,8 +1074,8 @@ class TrivialDBGUI:
         
         dialog = tk.Toplevel(self.root)
         dialog.title("删除数据")
-        dialog.geometry("400x200")
-        self.center_dialog(dialog, 400, 200)
+        dialog.geometry("400x250")
+        self.center_dialog(dialog, 400, 250)
         
         ttk.Label(dialog, text="表名:").pack(pady=5)
         table_entry = ttk.Entry(dialog, width=30)
