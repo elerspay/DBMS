@@ -44,16 +44,19 @@ void table_manager::cache_record(record_manager *rm)
 
 void table_manager::cache_record_from_tmp_cache()
 {
-	expression::cache_clear(header.table_name);
+	// 不再清除整个缓存，只更新当前记录的所有列
 	int null_mark = ((int*)tmp_cache)[1];
 	for(int i = 0; i < header.col_num; ++i)
 	{
-		if(i == header.main_index && header.is_main_index_additional)
+		// 跳过系统列 __rowid__
+		if(strcmp(header.col_name[i], "__rowid__") == 0)
 			continue;
 
 		char *buf = nullptr;
 		if(!((null_mark >> i) & 1))
 			buf = tmp_cache + header.col_offset[i];
+		else
+			buf = nullptr; // NULL值也传递nullptr
 
 		expression::cache_column(
 			header.table_name,

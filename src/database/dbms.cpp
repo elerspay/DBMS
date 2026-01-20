@@ -1,4 +1,4 @@
-﻿#include "dbms.h"
+#include "dbms.h"
 #include "database.h"
 #include "../table/table.h"
 #include "../index/index.h"
@@ -153,13 +153,15 @@ void dbms::iterate_one_table(
     Callback callback)
 {
     auto bit = table->get_record_iterator_lower_bound(0);
+    record_manager rm(bit.get_pager());
+    
     for (; !bit.is_end(); bit.next())
     {
         int rid;
-        record_manager rm(bit.get_pager());
         rm.open(bit.get(), false);
         rm.read(&rid, 4);
         table->cache_record(&rm);
+        
         if (cond)
         {
             bool result = false;

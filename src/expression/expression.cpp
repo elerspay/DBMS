@@ -44,6 +44,16 @@ void expression::cache_replace(const char *table, const char *col, expression ex
 
 void expression::cache_column(const char *table, const char *col, const expression &expr)
 {
+	// 先删除该表该列的旧缓存，再添加新的
+	auto range = __expr_column_cache.equal_range(col);
+	for(auto it = range.first; it != range.second; ) {
+		if(it->second.first == table) {
+			it = __expr_column_cache.erase(it);
+		} else {
+			++it;
+		}
+	}
+	
 	__expr_column_cache.insert(
 		std::make_pair(
 			std::string(col),
