@@ -317,7 +317,8 @@ bool table_manager::alter_table_add_column(const field_item_t *field)
 		printf("  Column %d: %s, offset=%d, length=%d\n", 
 		       i, header.col_name[i], header.col_offset[i], header.col_length[i]);
 	}
-	
+	// 重新加载索引（确保新列的索引被正确初始化）
+	load_indices();
 	// 重新分配临时记录缓冲区
 	allocate_temp_record();
 	
