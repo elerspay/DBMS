@@ -26,16 +26,20 @@ class TrivialDBGUI:
         except:
             pass
         
-        # 数据库配置
+                # 数据库配置
         self.current_db = None
+        self.username = None
+        self.password = None
         
         # 自动识别平台并设置可执行文件路径
         self.trivial_db_path = self._detect_db_path()
         
         # 初始化样式
         self.setup_styles()
-        # 初始化界面
+                # 初始化界面
         self.setup_ui()
+        # 启动时显示登录框
+        self.root.after(100, self.show_login_dialog)
     
     def _detect_db_path(self):
         """自动检测平台并返回正确的数据库可执行文件路径"""
@@ -115,6 +119,40 @@ class TrivialDBGUI:
                        foreground="#34495e",
                        background="#f0f0f0")
     
+    def show_login_dialog(self):
+        """显示登录对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("用户登录")
+        dialog.geometry("300x200")
+        self.center_dialog(dialog, 300, 200)
+        
+        ttk.Label(dialog, text="用户名:").pack(pady=5)
+        user_entry = ttk.Entry(dialog, width=20)
+        user_entry.pack(pady=5)
+        if self.username: user_entry.insert(0, self.username)
+        
+        ttk.Label(dialog, text="密码:").pack(pady=5)
+        pass_entry = ttk.Entry(dialog, width=20, show="*")
+        pass_entry.pack(pady=5)
+        
+        def on_login():
+            user = user_entry.get().strip()
+            pwd = pass_entry.get().strip()
+            if not user or not pwd:
+                messagebox.showerror("错误", "请输入用户名和密码")
+                return
+            
+            # 保存凭证
+            self.username = user
+            self.password = pwd
+            self.status_var.set(f"当前用户: {user}")
+            dialog.destroy()
+            
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(pady=20)
+        ttk.Button(btn_frame, text="登录", command=on_login).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT, padx=10)
+
     def center_dialog(self, dialog, width=400, height=300):
         """将对话框居中显示在主窗口中心"""
         dialog.update_idletasks()
@@ -170,6 +208,9 @@ class TrivialDBGUI:
         self.create_nav_button(nav_frame, "更新数据", self.update_data, 14, button_color, hover_color, active_color, text_color)
         self.create_nav_button(nav_frame, "删除数据", self.delete_data, 15, button_color, hover_color, active_color, text_color)
         
+        # 用户管理
+        self.create_nav_button(nav_frame, "登录/切换用户", self.show_login_dialog, 16, button_color, hover_color, active_color, text_color)
+
         # 备份恢复操作分隔线
         self.create_section_separator(nav_frame, "备份恢复", 17, 18)
         
@@ -266,10 +307,15 @@ class TrivialDBGUI:
             else:
                 full_command = f"{sql_command}\nEXIT;"
             
-            # 执行命令 - 设置工作目录为可执行文件所在目录
+                        # 执行命令 - 设置工作目录为可执行文件所在目录
             exe_dir = os.path.dirname(os.path.abspath(self.trivial_db_path))
+            
+            args = [self.trivial_db_path]
+            if self.username and self.password:
+                args.extend(["-u", self.username, "-p", self.password])
+
             process = subprocess.Popen(
-                [self.trivial_db_path],
+                args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

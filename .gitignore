@@ -50,3 +50,7 @@ database/
 *.database
 *.tdata
 *.thead
+
+DBMS-25Fall.lnk
+init_auth.sql
+win_flex_bison-2.5.25/

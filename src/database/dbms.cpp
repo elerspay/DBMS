@@ -17,7 +17,7 @@ struct __cache_clear_guard
 };
 
 dbms::dbms()
-    : output_file(stdout), cur_db(nullptr)
+    : output_file(stdout), cur_db(nullptr), current_user(nullptr)
 {
 }
 
@@ -514,6 +514,10 @@ void dbms::show_database(const char* db_name)
 
 void dbms::drop_table(const char* table_name)
 {
+    if (!check_privilege(table_name, PRIV_DROP)) {
+        fprintf(stderr, "[Access Denied] DROP TABLE denied.\n");
+        return;
+    }
     if (assert_db_open()) {
         cur_db->drop_table(table_name);
         // 日志记录
@@ -544,6 +548,10 @@ void dbms::show_table(const char* table_name)
 
 void dbms::create_table(const table_header_t* header)
 {
+    if (!check_privilege(header->table_name, PRIV_CREATE)) {
+        fprintf(stderr, "[Access Denied] CREATE TABLE denied.\n");
+        return;
+    }
     if (assert_db_open()) {
         cur_db->create_table(header);
         // 日志记录
@@ -623,6 +631,10 @@ void dbms::alter_table_rename_column(const char* table_name, const char* old_nam
 
 void dbms::update_rows(const update_info_t* info)
 {
+    if (!check_privilege(info->table, PRIV_UPDATE)) {
+        fprintf(stderr, "[Access Denied] UPDATE denied.\n");
+        return;
+    }
     if (!assert_db_open())
         return;
 
@@ -679,6 +691,16 @@ void dbms::update_rows(const update_info_t* info)
 
 void dbms::select_rows(const select_info_t* info)
 {
+    // Check privs for all tables involved
+    for (linked_list_t* table_l = info->tables; table_l; table_l = table_l->next)
+    {
+        table_join_info_t* table_info = (table_join_info_t*)table_l->data;
+        if (!check_privilege(table_info->table, PRIV_SELECT)) {
+             fprintf(stderr, "[Access Denied] SELECT denied on table %s.\n", table_info->table);
+             return;
+        }
+    }
+
     if (!assert_db_open())
         return;
 
@@ -1340,6 +1362,10 @@ void dbms::select_rows_aggregate(
 
 void dbms::delete_rows(const delete_info_t* info)
 {
+    if (!check_privilege(info->table, PRIV_DELETE)) {
+        fprintf(stderr, "[Access Denied] DELETE denied.\n");
+        return;
+    }
     if (!assert_db_open())
         return;
     __cache_clear_guard __guard;
@@ -1370,6 +1396,10 @@ void dbms::delete_rows(const delete_info_t* info)
 
 void dbms::insert_rows(const insert_info_t* info)
 {
+    if (!check_privilege(info->table, PRIV_INSERT)) {
+        fprintf(stderr, "[Access Denied] INSERT denied.\n");
+        return;
+    }
     if (!assert_db_open())
         return;
     __cache_clear_guard __guard;
@@ -1539,4 +1569,176 @@ bool dbms::value_exists(const char* table, const char* column, const char* data)
     }
 
     return tm->value_exists(column, data);
+}
+
+void dbms::login(const char *username, const char *password) {
+    std::string old_db;
+    if (cur_db && cur_db->is_opened()) {
+        old_db = cur_db->get_name();
+    }
+
+    try {
+        switch_database("sys_db");
+    } catch (...) {
+        fprintf(stderr, "[Error] System database 'sys_db' missing.\n");
+        if (!old_db.empty()) switch_database(old_db.c_str());
+        return;
+    }
+    
+    if (!cur_db || !cur_db->is_opened()) {
+         fprintf(stderr, "[Error] Failed to open system database.\n");
+         if (!old_db.empty()) switch_database(old_db.c_str());
+         return;
+    }
+
+    table_manager *user_table = cur_db->get_table("mysql_user");
+    if (!user_table) {
+        if (strcmp(username, "root") == 0 && strcmp(password, "root") == 0) {
+             current_user = new UserSession();
+             current_user->username = "root";
+             current_user->is_admin = true;
+             printf("[Auth] Bootstrapped root login success.\n");
+        } else {
+             fprintf(stderr, "[Error] User table missing.\n");
+        }
+    } else {
+        bool found = false;
+        iterate_one_table(user_table, nullptr, [&](table_manager *tm, record_manager *rm, int rid) -> bool {
+            int user_col = tm->lookup_column("username");
+            int pass_col = tm->lookup_column("password");
+            if (user_col < 0 || pass_col < 0) return true;
+            
+            const char* db_user = tm->get_cached_column(user_col);
+            const char* db_pass = tm->get_cached_column(pass_col);
+            
+            if (strcmp(db_user, username) == 0) {
+                if (strcmp(db_pass, password) == 0) {
+                    found = true;
+                    return false;
+                }
+            }
+            return true;
+        });
+        
+        if (found) {
+            if (current_user) delete current_user;
+            current_user = new UserSession();
+            current_user->username = username;
+            current_user->is_admin = (strcmp(username, "root") == 0);
+            
+            table_manager *priv_table = cur_db->get_table("mysql_privileges");
+            if (priv_table) {
+                 iterate_one_table(priv_table, nullptr, [&](table_manager *tm, record_manager *rm, int rid) -> bool {
+                     int u_col = tm->lookup_column("username");
+                     int t_col = tm->lookup_column("table_name");
+                     int p_col = tm->lookup_column("privilege_type");
+                     
+                     if (u_col >= 0 && t_col >= 0 && p_col >= 0) {
+                         const char* p_user = tm->get_cached_column(u_col);
+                         if (strcmp(p_user, username) == 0) {
+                             const char* p_table = tm->get_cached_column(t_col);
+                             int priv = *(int*)tm->get_cached_column(p_col);
+                             current_user->table_privileges[p_table] |= priv;
+                         }
+                     }
+                     return true;
+                 });
+            }
+            printf("[Auth] Login successful.\n");
+        } else {
+            printf("[Auth] Login failed.\n");
+        }
+    }
+    
+    if (!old_db.empty()) switch_database(old_db.c_str());
+    else close_database();
+}
+
+void dbms::logout() {
+    if (current_user) {
+        delete current_user;
+        current_user = nullptr;
+        printf("[Auth] Logged out.\n");
+    }
+}
+
+bool dbms::check_privilege(const char *table_name, int required_priv) {
+    if (!current_user) return true; // Backward compatibility / Guest mode
+    if (current_user->is_admin) return true;
+    
+    if (table_name) {
+        auto it = current_user->table_privileges.find(table_name);
+        if (it != current_user->table_privileges.end()) {
+             if ((it->second & required_priv) == required_priv) return true;
+        }
+    }
+    return false;
+}
+
+void dbms::create_user(const char *username, const char *password) {
+    if (current_user && !current_user->is_admin) {
+        fprintf(stderr, "[Access Denied] Only admin can create users.\n");
+        return;
+    }
+    
+    std::string old_db;
+    if (cur_db && cur_db->is_opened()) old_db = cur_db->get_name();
+    
+    try {
+        switch_database("sys_db");
+        if (!cur_db || !cur_db->is_opened()) throw "No sys_db";
+        table_manager *tm = cur_db->get_table("mysql_user");
+        if (!tm) throw "No mysql_user table";
+        
+        tm->init_temp_record();
+        int u_col = tm->lookup_column("username");
+        int p_col = tm->lookup_column("password");
+        
+        if (u_col < 0 || p_col < 0) throw "Invalid schema";
+        
+        tm->set_temp_record(u_col, (char*)username);
+        tm->set_temp_record(p_col, (char*)password);
+        tm->insert_record();
+        printf("[Info] User '%s' created.\n", username);
+    } catch (const char* msg) {
+        fprintf(stderr, "[Error] Create user failed: %s\n", msg);
+    } catch (...) {}
+    
+    if (!old_db.empty()) switch_database(old_db.c_str());
+    else close_database();
+}
+
+void dbms::grant_privilege(const char *username, const char *table, int priv) {
+    if (current_user && !current_user->is_admin) {
+        fprintf(stderr, "[Access Denied] Only admin can grant privileges.\n");
+        return;
+    }
+    
+    std::string old_db;
+    if (cur_db && cur_db->is_opened()) old_db = cur_db->get_name();
+    
+    try {
+        switch_database("sys_db");
+        if (!cur_db || !cur_db->is_opened()) throw "No sys_db";
+        table_manager *tm = cur_db->get_table("mysql_privileges");
+        if (!tm) throw "No mysql_privileges table";
+        
+        tm->init_temp_record();
+        int u_col = tm->lookup_column("username");
+        int t_col = tm->lookup_column("table_name");
+        int p_col = tm->lookup_column("privilege_type");
+        
+        if (u_col < 0 || t_col < 0 || p_col < 0) throw "Invalid schema";
+        
+        tm->set_temp_record(u_col, (char*)username);
+        tm->set_temp_record(t_col, (char*)table);
+        tm->set_temp_record(p_col, (char*)&priv); // Pass pointer to int
+        tm->insert_record();
+        printf("[Info] Granted privilege %d on %s to %s.\n", priv, table, username);
+    } catch (const char* msg) {
+        fprintf(stderr, "[Error] Grant failed: %s\n", msg);
+    } catch (...) {}
+    
+    if (!old_db.empty()) switch_database(old_db.c_str());
+    else close_database();
 }

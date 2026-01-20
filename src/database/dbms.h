@@ -5,11 +5,33 @@
 #include "../parser/defs.h"
 #include "../expression/expression.h"
 #include <cstdio>
+#include <string>
+#include <unordered_map>
+
+// Privilege Constants
+enum Privilege {
+    PRIV_NONE = 0,
+    PRIV_SELECT = 1 << 0,
+    PRIV_INSERT = 1 << 1,
+    PRIV_UPDATE = 1 << 2,
+    PRIV_DELETE = 1 << 3,
+    PRIV_CREATE = 1 << 4,
+    PRIV_DROP   = 1 << 5,
+    PRIV_ALTER  = 1 << 6,
+    PRIV_ALL    = 0xFFFF
+};
+
+struct UserSession {
+    std::string username;
+    bool is_admin;
+    std::unordered_map<std::string, int> table_privileges; // Table -> Priv Mask
+};
 
 class dbms
 {
-	FILE *output_file;
+		FILE *output_file;
 	database *cur_db;
+	UserSession *current_user;
 private:
 	dbms();
 
@@ -47,7 +69,14 @@ public:
 		const std::vector<expr_node_t*> &exprs,
 		const std::vector<std::string> &expr_names);
 
-	bool value_exists(const char *table, const char *column, const char *data);
+		bool value_exists(const char *table, const char *column, const char *data);
+
+	// User Management
+	void login(const char *username, const char *password);
+	void logout();
+	bool check_privilege(const char *table_name, int required_priv);
+	void create_user(const char *username, const char *password);
+	void grant_privilege(const char *username, const char *table, int priv);
 
 public:
 	bool assert_db_open();
